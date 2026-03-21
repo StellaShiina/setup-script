@@ -155,6 +155,88 @@ install_singbox() {
     sudo apt update && sudo apt install sing-box -y
 }
 
+install_log_maintenance() {
+    echo -e "${GREEN}配置日志限制与自动清理...${NC}"
+    check_sudo
+
+    # ================================
+    # 1. 配置 journald 限制
+    # ================================
+    JOURNAL_CONF="/etc/systemd/journald.conf.d/99-custom.conf"
+
+    sudo mkdir -p /etc/systemd/journald.conf.d/
+
+    sudo tee "$JOURNAL_CONF" > /dev/null <<EOF
+[Journal]
+SystemMaxUse=100M
+SystemKeepFree=200M
+SystemMaxFileSize=20M
+RuntimeMaxUse=50M
+EOF
+
+    echo -e "${GREEN}journald 限制已写入 ${JOURNAL_CONF}${NC}"
+
+    # 重启 journald 使配置生效
+    sudo systemctl restart systemd-journald
+
+    # ================================
+    # 2. 创建清理脚本
+    # ================================
+    CLEAN_SCRIPT="/usr/local/bin/system-cleanup.sh"
+
+    sudo tee "$CLEAN_SCRIPT" > /dev/null <<'EOF'
+#!/bin/bash
+
+# apt 缓存清理
+apt-get clean
+
+# journal 清空（彻底）
+journalctl --rotate
+journalctl --vacuum-time=1s
+
+EOF
+
+    sudo chmod +x "$CLEAN_SCRIPT"
+
+    # ================================
+    # 3. 创建 systemd service
+    # ================================
+    SERVICE_FILE="/etc/systemd/system/system-cleanup.service"
+
+    sudo tee "$SERVICE_FILE" > /dev/null <<EOF
+[Unit]
+Description=Monthly System Cleanup
+
+[Service]
+Type=oneshot
+ExecStart=$CLEAN_SCRIPT
+EOF
+
+    # ================================
+    # 4. 创建 systemd timer（每月执行）
+    # ================================
+    TIMER_FILE="/etc/systemd/system/system-cleanup.timer"
+
+    sudo tee "$TIMER_FILE" > /dev/null <<EOF
+[Unit]
+Description=Run system cleanup monthly
+
+[Timer]
+OnCalendar=monthly
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
+
+    # 启用 timer
+    sudo systemctl daemon-reexec
+    sudo systemctl daemon-reload
+    sudo systemctl enable --now system-cleanup.timer
+
+    echo -e "${GREEN}日志限制 + 自动清理已启用（每月执行）${NC}"
+}
+
 while true; do
     echo -e "${BLUE}请选择安装组件 (输入数字，q 退出):${NC}"
     echo "1) Caddy (自动 UFW)"
@@ -163,6 +245,7 @@ while true; do
     echo "4) sing-box"
     echo "5) s-ui (脚本可能接管终端)"
     echo "6) 3x-ui (脚本可能接管终端)"
+    echo "7) 日志限制 + 自动清理（适合小内存VPS）"
     echo "q) 退出"
     read -p "选择: " opt
     case $opt in
@@ -172,6 +255,7 @@ while true; do
         4) install_singbox ;;
         5) bash <(curl -Ls https://raw.githubusercontent.com/alireza0/s-ui/master/install.sh) ;;
         6) bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh) ;;
+        7) install_log_maintenance ;;
         q) break ;;
         *) echo "无效选项" ;;
     esac
