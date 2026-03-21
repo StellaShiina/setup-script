@@ -24,51 +24,43 @@ check_sudo() {
 }
 
 # =================================================================
-# 1. Update & Upgrade (仅运行一次)
+# 第一部分：非可选项 (仅在第一次运行时执行)
 # =================================================================
-if [ ! -f "$MARKER" ]; then
-    echo -e "${GREEN}[1/6] 正在执行系统更新 (仅限首次)...${NC}"
-    check_sudo
-    sudo apt update && sudo apt upgrade -y
-    touch "$MARKER"
-else
-    echo -e "${YELLOW}[1/6] 检测到已更新记录，跳过系统升级。${NC}"
-fi
+if [ ! -f "$BASE_INIT_MARKER" ]; then
+    echo -e "${BLUE}>>> 检测到首次运行，开始基础环境配置...${NC}"
 
-# =================================================================
-# 2. 安装基础依赖
-# =================================================================
-echo -e "${GREEN}[2/6] 安装必备依赖软件...${NC}"
-check_sudo
-DEPENDENCIES=(zsh unzip git command-not-found htop net-tools bind9-dnsutils neovim wget curl mtr tmux ufw)
-sudo apt install -y "${DEPENDENCIES[@]}"
+    # 1. Update & Upgrade
+    echo -e "${GREEN}[1/3] 正在更新系统软件包...${NC}"
+    do_sudo apt update && do_sudo apt upgrade -y
 
-# =================================================================
-# 3. 配置 Oh-My-Zsh & 插件 (用户级配置)
-# =================================================================
-echo -e "${GREEN}[3/6] 配置 Oh-My-Zsh...${NC}"
+    # 2. 安装基础依赖
+    echo -e "${GREEN}[2/3] 安装基础工具集...${NC}"
+    DEPENDS=(zsh unzip git command-not-found htop net-tools bind9-dnsutils neovim wget curl mtr tmux ufw)
+    do_sudo apt install -y "${DEPENDS[@]}"
 
-# 安装 Oh-My-Zsh (幂等)
-if [ ! -d "$HOME/.oh-my-zsh" ]; then
-    # 使用 --unattended 避免安装完后直接跳入 zsh 导致脚本中断
-    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
-    # 修改默认 shell
-    check_sudo
-    sudo chsh -s $(which zsh) $USER
-fi
+    # 3. 配置 Oh-My-Zsh (针对当前用户)
+    echo -e "${GREEN}[3/3] 配置 Oh-My-Zsh 环境...${NC}"
+    if [ ! -d "$HOME/.oh-my-zsh" ]; then
+        sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+        do_sudo chsh -s $(which zsh) $USER
+    fi
 
-# 下载主题和插件 (幂等)
-[[ ! -d "$ZSH_CUSTOM/themes/powerlevel10k" ]] && git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "$ZSH_CUSTOM/themes/powerlevel10k"
-[[ ! -d "$ZSH_CUSTOM/plugins/zsh-autosuggestions" ]] && git clone https://github.com/zsh-users/zsh-autosuggestions "$ZSH_CUSTOM/plugins/zsh-autosuggestions"
-[[ ! -d "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting" ]] && git clone https://github.com/zsh-users/zsh-syntax-highlighting.git "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting"
+    # 安装插件与主题
+    [[ ! -d "$ZSH_CUSTOM/themes/powerlevel10k" ]] && git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "$ZSH_CUSTOM/themes/powerlevel10k"
+    [[ ! -d "$ZSH_CUSTOM/plugins/zsh-autosuggestions" ]] && git clone https://github.com/zsh-users/zsh-autosuggestions "$ZSH_CUSTOM/plugins/zsh-autosuggestions"
+    [[ ! -d "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting" ]] && git clone https://github.com/zsh-users/zsh-syntax-highlighting.git "$ZSH_CUSTOM/plugins/zsh-syntax-highlighting"
 
-# 修改 .zshrc
-if [ -f "$HOME/.zshrc" ]; then
+    # 修改 .zshrc 配置
     sed -i 's/ZSH_THEME="robbyrussell"/ZSH_THEME="simple"/' "$HOME/.zshrc"
-    # 幂等修改插件列表：如果不在列表中才替换
     if ! grep -q "zsh-autosuggestions" "$HOME/.zshrc"; then
         sed -i 's/plugins=(git)/plugins=(git zsh-autosuggestions zsh-syntax-highlighting command-not-found)/' "$HOME/.zshrc"
     fi
+
+    # 写入标记文件
+    touch "$BASE_INIT_MARKER"
+    echo -e "${BLUE}>>> 基础环境初始化完成！${NC}"
+else
+    echo -e "${YELLOW}>>> 基础环境已处于初始化状态，跳过安装步骤。${NC}"
 fi
 
 # =================================================================
