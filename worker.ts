@@ -4,6 +4,12 @@ export default {
     const url = new URL(request.url);
     url.pathname = "/init.sh";
 
-    return env.ASSETS.fetch(new Request(url.toString(), request));
+    const resp = await env.ASSETS.fetch(new Request(url.toString(), request));
+
+    return new Response(resp.body, {
+      headers: {
+        "content-type": "text/plain; charset=utf-8",
+      },
+    });
   },
 };
