@@ -26,23 +26,23 @@ check_sudo() {
 # =================================================================
 # 第一部分：非可选项 (仅在第一次运行时执行)
 # =================================================================
-if [ ! -f "$BASE_INIT_MARKER" ]; then
+if [ ! -f "$MARKER" ]; then
     echo -e "${BLUE}>>> 检测到首次运行，开始基础环境配置...${NC}"
 
     # 1. Update & Upgrade
     echo -e "${GREEN}[1/3] 正在更新系统软件包...${NC}"
-    do_sudo apt update && do_sudo apt upgrade -y
+    sudo apt update && sudo apt upgrade -y
 
     # 2. 安装基础依赖
     echo -e "${GREEN}[2/3] 安装基础工具集...${NC}"
     DEPENDS=(zsh unzip git command-not-found htop net-tools bind9-dnsutils neovim wget curl mtr tmux ufw)
-    do_sudo apt install -y "${DEPENDS[@]}"
+    sudo apt install -y "${DEPENDS[@]}"
 
     # 3. 配置 Oh-My-Zsh (针对当前用户)
     echo -e "${GREEN}[3/3] 配置 Oh-My-Zsh 环境...${NC}"
     if [ ! -d "$HOME/.oh-my-zsh" ]; then
         sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
-        do_sudo chsh -s $(which zsh) $USER
+        sudo chsh -s $(which zsh) $USER
     fi
 
     # 安装插件与主题
@@ -57,7 +57,7 @@ if [ ! -f "$BASE_INIT_MARKER" ]; then
     fi
 
     # 写入标记文件
-    touch "$BASE_INIT_MARKER"
+    touch "$MARKER"
     echo -e "${BLUE}>>> 基础环境初始化完成！${NC}"
 else
     echo -e "${YELLOW}>>> 基础环境已处于初始化状态，跳过安装步骤。${NC}"
