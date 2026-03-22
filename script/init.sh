@@ -237,7 +237,8 @@ while true; do
     echo "4) sing-box"
     echo "5) s-ui (脚本可能接管终端)"
     echo "6) 3x-ui (脚本可能接管终端)"
-    echo "7) 日志限制 + 自动清理（适合小内存VPS）"
+    echo "7) 安装hysteria2"
+    echo "8) 日志限制 + 自动清理（适合小内存VPS）"
     echo "q) 退出"
     read -p "选择: " opt
     case $opt in
@@ -247,7 +248,8 @@ while true; do
         4) install_singbox ;;
         5) bash <(curl -Ls https://raw.githubusercontent.com/alireza0/s-ui/master/install.sh) ;;
         6) bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh) ;;
-        7) install_log_maintenance ;;
+        7) bash <(curl -fsSL https://get.hy2.sh/) ;;
+        8) install_log_maintenance ;;
         q) break ;;
         *) echo "无效选项" ;;
     esac
